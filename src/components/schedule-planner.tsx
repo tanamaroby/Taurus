@@ -18,11 +18,14 @@ const quickLabels = ["In Indonesia", "Meeting unavailable", "Travel", "Family ti
 export function SchedulePlanner() {
   const [isDark, setIsDark] = useState(false);
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
+  const [messageTitle, setMessageTitle] = useState("SCHEDULES");
   const [label, setLabel] = useState("In Indonesia");
+  const [subSection, setSubSection] = useState("");
+  const [subSections, setSubSections] = useState<string[]>([]);
   const [ranges, setRanges] = useState<BlockedRange[]>([]);
   const [copied, setCopied] = useState(false);
 
-  const output = useMemo(() => formatWhatsAppText(ranges), [ranges]);
+  const output = useMemo(() => formatWhatsAppText(ranges, messageTitle), [ranges, messageTitle]);
   const selectedDays = useMemo(() => ranges.reduce((total, range) => total + countInclusiveDays(range.from, range.to), 0), [ranges]);
 
   function toggleTheme() {
@@ -36,18 +39,36 @@ export function SchedulePlanner() {
 
     const normalized = normalizeRange(draftRange.from, draftRange.to ?? draftRange.from);
     const trimmedLabel = label.trim() || "Blocked dates";
+    const trimmedSubSections = subSections.map((item) => item.trim()).filter(Boolean);
 
     setRanges((current) => [
       ...current,
       {
         id: crypto.randomUUID(),
         label: trimmedLabel,
+        subSections: trimmedSubSections,
         from: normalized.from,
         to: normalized.to,
       },
     ]);
     setDraftRange(undefined);
+    setSubSections([]);
+    setSubSection("");
     setCopied(false);
+  }
+
+  function addSubSection() {
+    const trimmedSubSection = subSection.trim();
+    if (!trimmedSubSection) {
+      return;
+    }
+
+    setSubSections((current) => [...current, trimmedSubSection]);
+    setSubSection("");
+  }
+
+  function removeSubSection(indexToRemove: number) {
+    setSubSections((current) => current.filter((_, index) => index !== indexToRemove));
   }
 
   function removeRange(id: string) {
@@ -108,6 +129,20 @@ export function SchedulePlanner() {
                   </div>
                 </div>
 
+                <label className="mt-5 block">
+                  <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Top message</span>
+                  <input
+                    value={messageTitle}
+                    onChange={(event) => {
+                      setMessageTitle(event.target.value);
+                      setCopied(false);
+                    }}
+                    placeholder="SCHEDULES"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base outline-none ring-teal-500/20 transition focus:border-teal-500 focus:ring-4 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                  />
+                  <span className="mt-2 block text-xs text-slate-500 dark:text-slate-400">This appears above the blocked date list.</span>
+                </label>
+
                 <div className="planner-calendar rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-2 dark:border-white/10 dark:from-slate-950 dark:to-slate-900 sm:p-4">
                   <DayPicker
                     mode="range"
@@ -141,6 +176,51 @@ export function SchedulePlanner() {
                   >
                     <Plus size={18} aria-hidden="true" /> Add range
                   </button>
+                </div>
+
+                <div className="mt-4 rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Optional sub-sections</span>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                      <input
+                        value={subSection}
+                        onChange={(event) => setSubSection(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            addSubSection();
+                          }
+                        }}
+                        placeholder="e.g. Team A, Location, morning shift"
+                        className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base outline-none ring-teal-500/20 transition focus:border-teal-500 focus:ring-4 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={addSubSection}
+                        disabled={!subSection.trim()}
+                        className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-teal-300 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-teal-400 dark:hover:text-teal-200"
+                      >
+                        <Plus size={16} aria-hidden="true" /> Add sub-section
+                      </button>
+                    </div>
+                  </label>
+                  {subSections.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {subSections.map((item, index) => (
+                        <button
+                          type="button"
+                          key={`${item}-${index}`}
+                          onClick={() => removeSubSection(index)}
+                          className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-800 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-teal-300/20 dark:bg-teal-300/10 dark:text-teal-100 dark:hover:border-rose-300/20 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                        >
+                          {item}
+                          <Trash2 size={14} aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Leave blank if this label does not need sub-sections.</p>
+                  )}
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -184,6 +264,15 @@ export function SchedulePlanner() {
                       <article key={range.id} className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <h3 className="font-semibold text-slate-950 dark:text-white">{range.label}</h3>
+                          {range.subSections.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {range.subSections.map((item, index) => (
+                                <span key={`${range.id}-${item}-${index}`} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{formatCompactRange(range)} · {countInclusiveDays(range.from, range.to)} {countInclusiveDays(range.from, range.to) === 1 ? "day" : "days"}</p>
                         </div>
                         <button
@@ -200,16 +289,16 @@ export function SchedulePlanner() {
               </div>
             </div>
 
-            <aside className="rounded-[2rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-2xl shadow-slate-300/80 dark:border-white/10 dark:bg-white/8 dark:shadow-black/30 sm:p-6 lg:sticky lg:top-8 lg:self-start">
+            <aside className="rounded-[2rem] border border-slate-200 bg-white/90 p-5 text-slate-950 shadow-2xl shadow-slate-200/80 backdrop-blur dark:border-white/10 dark:bg-white/8 dark:text-white dark:shadow-black/30 sm:p-6 lg:sticky lg:top-8 lg:self-start">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-teal-300">Plain text output</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-teal-700 dark:text-teal-300">Plain text output</p>
                   <h2 className="mt-2 text-2xl font-semibold">Ready for WhatsApp</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Uses simple separators and labels instead of Markdown so it stays readable in chat.</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Uses simple separators and labels instead of Markdown so it stays readable in chat.</p>
                 </div>
               </div>
 
-              <pre className="min-h-80 whitespace-pre-wrap rounded-3xl border border-white/10 bg-black/30 p-4 font-mono text-sm leading-6 text-slate-100 shadow-inner shadow-black/30">{output}</pre>
+              <pre className="min-h-80 whitespace-pre-wrap rounded-3xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm leading-6 text-slate-800 shadow-inner shadow-slate-200/70 dark:border-white/10 dark:bg-black/30 dark:text-slate-100 dark:shadow-black/30">{output}</pre>
 
               <button
                 type="button"
@@ -221,11 +310,11 @@ export function SchedulePlanner() {
               </button>
 
               <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-2xl bg-white/8 p-4">
+                <div className="rounded-2xl bg-slate-100 p-4 dark:bg-white/8">
                   <span className="block text-2xl font-semibold">{ranges.length}</span>
                   ranges
                 </div>
-                <div className="rounded-2xl bg-white/8 p-4">
+                <div className="rounded-2xl bg-slate-100 p-4 dark:bg-white/8">
                   <span className="block text-2xl font-semibold">{selectedDays}</span>
                   blocked days
                 </div>

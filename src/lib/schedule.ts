@@ -3,6 +3,7 @@ import { differenceInCalendarDays, format, isAfter } from "date-fns";
 export type BlockedRange = {
   id: string;
   label: string;
+  subSections: string[];
   from: Date;
   to: Date;
 };
@@ -21,15 +22,16 @@ export function countInclusiveDays(from: Date, to: Date) {
   return differenceInCalendarDays(to, from) + 1;
 }
 
-export function formatWhatsAppText(ranges: BlockedRange[]) {
+export function formatWhatsAppText(ranges: BlockedRange[], messageTitle = "SCHEDULES") {
   if (ranges.length === 0) {
     return "No blocked dates selected yet.";
   }
 
+  const trimmedTitle = messageTitle.trim() || "SCHEDULES";
   const sortedRanges = [...ranges].sort((a, b) => a.from.getTime() - b.from.getTime());
   const lines = [
-    "Blocked out dates",
-    "=================",
+    trimmedTitle,
+    "=".repeat(trimmedTitle.length),
     "Please avoid scheduling on these dates:",
     "",
   ];
@@ -37,6 +39,9 @@ export function formatWhatsAppText(ranges: BlockedRange[]) {
   sortedRanges.forEach((range, index) => {
     const days = countInclusiveDays(range.from, range.to);
     lines.push(`${index + 1}. ${range.label}`);
+    range.subSections.forEach((subSection) => {
+      lines.push(`   - ${subSection}`);
+    });
     lines.push(`   From : ${format(range.from, "EEE, d MMM yyyy")}`);
     lines.push(`   To   : ${format(range.to, "EEE, d MMM yyyy")}`);
     lines.push(`   Total: ${days} ${days === 1 ? "day" : "days"}`);
