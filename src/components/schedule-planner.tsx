@@ -1,0 +1,243 @@
+"use client";
+
+import { addMonths } from "date-fns";
+import { CalendarDays, Check, Clipboard, Moon, Plus, Sparkles, Sun, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { DayPicker, type DateRange } from "react-day-picker";
+
+import {
+  type BlockedRange,
+  countInclusiveDays,
+  formatCompactRange,
+  formatWhatsAppText,
+  normalizeRange,
+} from "@/lib/schedule";
+
+const quickLabels = ["In Indonesia", "Meeting unavailable", "Travel", "Family time"];
+
+export function SchedulePlanner() {
+  const [isDark, setIsDark] = useState(false);
+  const [draftRange, setDraftRange] = useState<DateRange | undefined>();
+  const [label, setLabel] = useState("In Indonesia");
+  const [ranges, setRanges] = useState<BlockedRange[]>([]);
+  const [copied, setCopied] = useState(false);
+
+  const output = useMemo(() => formatWhatsAppText(ranges), [ranges]);
+  const selectedDays = useMemo(() => ranges.reduce((total, range) => total + countInclusiveDays(range.from, range.to), 0), [ranges]);
+
+  function toggleTheme() {
+    setIsDark((current) => !current);
+  }
+
+  function addRange() {
+    if (!draftRange?.from) {
+      return;
+    }
+
+    const normalized = normalizeRange(draftRange.from, draftRange.to ?? draftRange.from);
+    const trimmedLabel = label.trim() || "Blocked dates";
+
+    setRanges((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        label: trimmedLabel,
+        from: normalized.from,
+        to: normalized.to,
+      },
+    ]);
+    setDraftRange(undefined);
+    setCopied(false);
+  }
+
+  function removeRange(id: string) {
+    setRanges((current) => current.filter((range) => range.id !== id));
+    setCopied(false);
+  }
+
+  async function copyOutput() {
+    await navigator.clipboard.writeText(output);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2200);
+  }
+
+  return (
+    <main className={isDark ? "dark" : ""}>
+      <div className="min-h-screen overflow-hidden bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-slate-950 dark:text-white">
+        <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.20),transparent_32%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.88))] dark:bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(15,23,42,0.96))]" />
+
+        <section className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+          <header className="flex flex-col gap-5 rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-2xl shadow-slate-200/70 backdrop-blur dark:border-white/10 dark:bg-white/7 dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-teal-500 to-blue-600 text-white shadow-lg shadow-teal-500/25">
+                <CalendarDays aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-teal-700 dark:text-teal-300">Taurus</p>
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">WhatsApp schedule blocker</h1>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:text-teal-700 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-teal-400 dark:hover:text-teal-200"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
+              {isDark ? "Light mode" : "Dark mode"}
+            </button>
+          </header>
+
+          <section className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]">
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-xl shadow-slate-200/70 backdrop-blur dark:border-white/10 dark:bg-slate-900/88 dark:shadow-black/30 sm:p-6">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-teal-700 dark:bg-teal-400/10 dark:text-teal-200">
+                      <Sparkles size={14} aria-hidden="true" /> Select ranges
+                    </p>
+                    <h2 className="text-2xl font-semibold tracking-tight">Block unavailable dates</h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      Pick a start and end date, add a clear label, then copy a WhatsApp-friendly plain text summary.
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700 dark:bg-white/10 dark:text-slate-200">
+                    <strong className="block text-2xl text-slate-950 dark:text-white">{selectedDays}</strong>
+                    blocked {selectedDays === 1 ? "day" : "days"}
+                  </div>
+                </div>
+
+                <div className="planner-calendar rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-2 dark:border-white/10 dark:from-slate-950 dark:to-slate-900 sm:p-4">
+                  <DayPicker
+                    mode="range"
+                    selected={draftRange}
+                    onSelect={setDraftRange}
+                    numberOfMonths={1}
+                    defaultMonth={new Date()}
+                    endMonth={addMonths(new Date(), 18)}
+                    disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
+                    modifiers={{ blocked: ranges.map((range) => ({ from: range.from, to: range.to })) }}
+                    modifiersClassNames={{ blocked: "rdp-blocked" }}
+                    className="mx-auto"
+                  />
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Range label</span>
+                    <input
+                      value={label}
+                      onChange={(event) => setLabel(event.target.value)}
+                      placeholder="e.g. In Indonesia"
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-base outline-none ring-teal-500/20 transition focus:border-teal-500 focus:ring-4 dark:border-white/10 dark:bg-slate-950 dark:text-white"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addRange}
+                    disabled={!draftRange?.from}
+                    className="mt-auto inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 font-semibold text-white shadow-lg shadow-slate-300 transition hover:-translate-y-0.5 hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0 dark:bg-teal-400 dark:text-slate-950 dark:shadow-none dark:hover:bg-teal-300"
+                  >
+                    <Plus size={18} aria-hidden="true" /> Add range
+                  </button>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {quickLabels.map((quickLabel) => (
+                    <button
+                      type="button"
+                      key={quickLabel}
+                      onClick={() => setLabel(quickLabel)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-teal-300 hover:text-teal-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-teal-200"
+                    >
+                      {quickLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/30 sm:p-6">
+                <div className="mb-4 flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold">Selected blocked ranges</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Temporary only. Nothing is saved.</p>
+                  </div>
+                  {ranges.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setRanges([])}
+                      className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
+
+                {ranges.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                    Add your first date range to see it here.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {ranges.map((range) => (
+                      <article key={range.id} className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="font-semibold text-slate-950 dark:text-white">{range.label}</h3>
+                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{formatCompactRange(range)} · {countInclusiveDays(range.from, range.to)} {countInclusiveDays(range.from, range.to) === 1 ? "day" : "days"}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeRange(range.id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-white/10 dark:hover:border-rose-300/20 dark:hover:bg-rose-400/10 dark:hover:text-rose-200"
+                        >
+                          <Trash2 size={16} aria-hidden="true" /> Remove
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <aside className="rounded-[2rem] border border-slate-900/10 bg-slate-950 p-5 text-white shadow-2xl shadow-slate-300/80 dark:border-white/10 dark:bg-white/8 dark:shadow-black/30 sm:p-6 lg:sticky lg:top-8 lg:self-start">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-teal-300">Plain text output</p>
+                  <h2 className="mt-2 text-2xl font-semibold">Ready for WhatsApp</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">Uses simple separators and labels instead of Markdown so it stays readable in chat.</p>
+                </div>
+              </div>
+
+              <pre className="min-h-80 whitespace-pre-wrap rounded-3xl border border-white/10 bg-black/30 p-4 font-mono text-sm leading-6 text-slate-100 shadow-inner shadow-black/30">{output}</pre>
+
+              <button
+                type="button"
+                onClick={copyOutput}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-300 px-5 py-4 font-semibold text-slate-950 shadow-lg shadow-teal-500/20 transition hover:-translate-y-0.5 hover:bg-teal-200"
+              >
+                {copied ? <Check size={20} aria-hidden="true" /> : <Clipboard size={20} aria-hidden="true" />}
+                {copied ? "Copied" : "Copy text"}
+              </button>
+
+              <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-2xl bg-white/8 p-4">
+                  <span className="block text-2xl font-semibold">{ranges.length}</span>
+                  ranges
+                </div>
+                <div className="rounded-2xl bg-white/8 p-4">
+                  <span className="block text-2xl font-semibold">{selectedDays}</span>
+                  blocked days
+                </div>
+              </div>
+            </aside>
+          </section>
+
+          <footer className="pb-4 text-center text-sm text-slate-500 dark:text-slate-400">
+            Built for temporary planning: no account, no database, no saved schedules.
+          </footer>
+        </section>
+      </div>
+    </main>
+  );
+}
