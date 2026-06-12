@@ -19,6 +19,16 @@ export type ImportedSchedule = {
   ranges: BlockedRange[];
 };
 
+export type ScheduleSharePayload = {
+  t: string;
+  r: Array<{
+    l: string;
+    s: string[];
+    f: string;
+    o: string;
+  }>;
+};
+
 export function normalizeRange(from: Date, to: Date) {
   return isAfter(from, to) ? { from: to, to: from } : { from, to };
 }
@@ -68,6 +78,88 @@ export function formatWhatsAppText(
 
   lines.push("", "Thank you.");
   return lines.join("\n");
+}
+
+export function createScheduleSharePayload(
+  ranges: BlockedRange[],
+  messageTitle = "SCHEDULES",
+): ScheduleSharePayload {
+  return {
+    t: messageTitle.trim() || "SCHEDULES",
+    r: ranges.map((range) => ({
+      l: range.label,
+      s: range.subSections,
+      f: range.from.toISOString(),
+      o: range.to.toISOString(),
+    })),
+  };
+}
+
+export function scheduleSharePayloadToImported(
+  payload: ScheduleSharePayload,
+): ImportedSchedule {
+  return {
+    messageTitle: payload.t.trim() || "SCHEDULES",
+    ranges: payload.r.map((range) => decodeCompactRange(range)),
+  };
+}
+
+function decodeCompactRange(range: {
+  l: string;
+  s: string[];
+  f: string;
+  o: string;
+}): BlockedRange {
+  if (
+    !range ||
+    typeof range.l !== "string" ||
+    !Array.isArray(range.s) ||
+    typeof range.f !== "string" ||
+    typeof range.o !== "string"
+  ) {
+    throw new Error("Invalid schedule share payload.");
+  }
+
+  const from = new Date(range.f);
+  const to = new Date(range.o);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    throw new Error("Invalid schedule share payload.");
+  }
+
+  const normalized = normalizeRange(from, to);
+
+  return {
+    id: crypto.randomUUID(),
+    label: range.l.trim(),
+    subSections: range.s.map((item) => String(item).trim()).filter(Boolean),
+    from: normalized.from,
+    to: normalized.to,
+  };
+}
+
+export function describeScheduleShare(schedule: ImportedSchedule) {
+  const rangeCount = schedule.ranges.length;
+  const dayCount = schedule.ranges.reduce(
+    (total, range) => total + countInclusiveDays(range.from, range.to),
+    0,
+  );
+
+  if (rangeCount === 0) {
+    return {
+      title: `${schedule.messageTitle || "Taurus"} on Taurus`,
+      description: "A Taurus schedule with no blocked dates yet.",
+    };
+  }
+
+  const firstRange = schedule.ranges[0];
+  const firstRangeText = firstRange
+    ? `${firstRange.label} · ${formatCompactRange(firstRange)}`
+    : "No date ranges selected";
+
+  return {
+    title: `${schedule.messageTitle || "Taurus"} on Taurus`,
+    description: `${rangeCount} blocked ${rangeCount === 1 ? "range" : "ranges"} covering ${dayCount} ${dayCount === 1 ? "day" : "days"}. ${firstRangeText}.`,
+  };
 }
 
 function parseScheduleDate(value: string) {

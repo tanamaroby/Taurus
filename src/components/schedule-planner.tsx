@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Check,
   Clipboard,
+  Loader2,
   Moon,
   Plus,
   Sparkles,
@@ -16,11 +17,13 @@ import { DayPicker, type DateRange } from "react-day-picker";
 
 import {
   countInclusiveDays,
+  createScheduleSharePayload,
   formatCompactRange,
   formatWhatsAppText,
   normalizeRange,
   parseWhatsAppText,
   type BlockedRange,
+  type ImportedSchedule,
 } from "@/lib/schedule";
 
 const quickLabels = [
@@ -30,15 +33,28 @@ const quickLabels = [
   "Family time",
 ];
 
-export function SchedulePlanner() {
+type SchedulePlannerProps = {
+  initialSchedule?: ImportedSchedule;
+};
+
+export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
   const [isDark, setIsDark] = useState(false);
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
-  const [messageTitle, setMessageTitle] = useState("SCHEDULES");
-  const [label, setLabel] = useState("In Indonesia");
+  const [messageTitle, setMessageTitle] = useState(
+    initialSchedule?.messageTitle ?? "SCHEDULES",
+  );
+  const [label, setLabel] = useState(
+    initialSchedule?.ranges[0]?.label ?? "In Indonesia",
+  );
   const [subSection, setSubSection] = useState("");
   const [subSections, setSubSections] = useState<string[]>([]);
-  const [ranges, setRanges] = useState<BlockedRange[]>([]);
+  const [ranges, setRanges] = useState<BlockedRange[]>(
+    initialSchedule?.ranges ?? [],
+  );
   const [copied, setCopied] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
 
@@ -152,6 +168,55 @@ export function SchedulePlanner() {
     await navigator.clipboard.writeText(output);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2200);
+  }
+
+  async function copyShareLink() {
+    if (ranges.length === 0) {
+      setLinkError("Add at least one blocked range before sharing.");
+      return;
+    }
+    setLinkLoading(true);
+    setLinkError(null);
+
+    try {
+      const payload = createScheduleSharePayload(ranges, messageTitle);
+      const response = await fetch("/api/share", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ payload }),
+      });
+
+      const responseBody = (await response
+        .json()
+        .catch(() => ({}))) as Partial<{
+        slug: string;
+        error: string;
+      }>;
+
+      if (!response.ok || !responseBody.slug) {
+        throw new Error(
+          responseBody.error ?? "Unable to create share link right now.",
+        );
+      }
+
+      const shareUrl = new URL(window.location.origin);
+      shareUrl.pathname = `/view/${responseBody.slug}`;
+
+      await navigator.clipboard.writeText(shareUrl.toString());
+      setLinkCopied(true);
+      setLinkError(null);
+      window.setTimeout(() => setLinkCopied(false), 2200);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to copy the link right now.";
+      setLinkError(message);
+    } finally {
+      setLinkLoading(false);
+    }
   }
 
   return (
@@ -442,6 +507,36 @@ export function SchedulePlanner() {
                 {copied ? "Copied" : "Copy text"}
               </button>
 
+              <button
+                type="button"
+                onClick={copyShareLink}
+                disabled={linkLoading}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-teal-300 hover:text-teal-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 dark:border-white/10 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-teal-400 dark:hover:text-teal-200"
+              >
+                {linkLoading ? (
+                  <Loader2
+                    size={20}
+                    aria-hidden="true"
+                    className="animate-spin"
+                  />
+                ) : linkCopied ? (
+                  <Check size={20} aria-hidden="true" />
+                ) : (
+                  <Sparkles size={20} aria-hidden="true" />
+                )}
+                {linkLoading
+                  ? "Saving to database..."
+                  : linkCopied
+                    ? "Link copied"
+                    : "Copy share link"}
+              </button>
+
+              {linkError ? (
+                <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">
+                  {linkError}
+                </p>
+              ) : null}
+
               <div className="mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-black/20">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -521,8 +616,7 @@ export function SchedulePlanner() {
           </section>
 
           <footer className="pb-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            Built for temporary planning: no account, no database, no saved
-            schedules.
+            Built for temporary planning: no account, with short-link sharing.
           </footer>
         </section>
       </div>
