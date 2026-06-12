@@ -2,6 +2,7 @@
 
 ## 0.5.0 - WIP
 
+- Fixed calendar rendering/styling on shared view links so blocked dates are visible again.
 - Added multiple schedule views for the planner and shared viewer.
 - Added local draft persistence so schedules survive reloads and offline use.
 - Added a dedicated changelog page and linked it from the app.

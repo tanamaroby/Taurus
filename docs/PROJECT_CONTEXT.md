@@ -39,6 +39,7 @@ The app also exposes multiple schedule views on the planner and shared pages, pl
 
 ## View Modes and Offline Drafts
 - Planner and shared-view pages can switch between calendar, list, and summary/text-style previews.
+- Shared-view calendar now uses the same calendar styling wrapper as the planner preview so blocked-date markers are visible on shared links.
 - Planner drafts persist locally in `localStorage` so the current work survives reloads and offline sessions on the same device.
 - The changelog is linked from both the planner and shared view pages.
 
@@ -101,6 +102,10 @@ This ensures browsers re-check worker updates reliably.
 - Start: `npm run start`
 
 ## Change Log
+### 2026-06-12
+- Fixed shared-view calendar rendering by restoring the calendar styling wrapper used by DayPicker blocked-date modifiers.
+- Touched files: `CHANGELOG.md`, `docs/PROJECT_CONTEXT.md`, `src/components/schedule-viewer.tsx`.
+- Impact: shared links now show blocked dates correctly in calendar mode while list and summary remain unchanged.
 ### 2026-06-12
 - Replaced Taurus app icon artwork with a new premium icon family for PWA installs.
 - Added dedicated maskable and monochrome icon assets and updated manifest purposes.

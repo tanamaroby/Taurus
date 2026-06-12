@@ -181,7 +181,7 @@ export function ScheduleViewer({ schedule }: ScheduleViewerProps) {
     }
 
     return (
-      <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/40 p-3 shadow-inner shadow-black/20 sm:p-4">
+      <div className="planner-calendar rounded-[1.75rem] border border-white/10 bg-slate-950/40 p-3 shadow-inner shadow-black/20 sm:p-4">
         {sortedRanges.length === 0 ? (
           <div className="rounded-[1.75rem] border border-dashed border-white/15 bg-white/5 p-6 text-sm leading-6 text-slate-300">
             No blocked dates are included in this shared view.
