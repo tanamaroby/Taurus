@@ -5,6 +5,9 @@
 - Added multiple schedule views for the planner and shared viewer.
 - Added local draft persistence so schedules survive reloads and offline use.
 - Added a dedicated changelog page and linked it from the app.
+- Replaced Taurus branding assets with a new premium icon system for PWA install surfaces.
+- Added dedicated maskable and monochrome icon variants for launcher compatibility.
+- Updated app metadata and cached shell assets so icon updates roll out reliably.
 
 ## 0.4.0
 

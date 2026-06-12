@@ -1,1 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#14b8a6"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs><circle cx="256" cy="256" r="230" fill="url(#g)"/><path fill="#fff" d="M132 134h248v76h-84v180h-80V210h-84z"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Taurus app icon">
+	<defs>
+		<linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+			<stop offset="0" stop-color="#05243a"/>
+			<stop offset="0.5" stop-color="#0c5f79"/>
+			<stop offset="1" stop-color="#0fb6a8"/>
+		</linearGradient>
+		<radialGradient id="glow" cx="0.5" cy="0.36" r="0.68">
+			<stop offset="0" stop-color="#7cf5e7" stop-opacity="0.55"/>
+			<stop offset="1" stop-color="#7cf5e7" stop-opacity="0"/>
+		</radialGradient>
+		<linearGradient id="horn" x1="0" x2="1" y1="0" y2="1">
+			<stop offset="0" stop-color="#fff3c4"/>
+			<stop offset="1" stop-color="#f2b450"/>
+		</linearGradient>
+		<linearGradient id="core" x1="0" x2="1" y1="0" y2="1">
+			<stop offset="0" stop-color="#0f172a"/>
+			<stop offset="1" stop-color="#111827"/>
+		</linearGradient>
+	</defs>
+
+	<rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+	<circle cx="512" cy="420" r="390" fill="url(#glow)"/>
+
+	<path fill="none" stroke="#d8fff8" stroke-opacity="0.35" stroke-width="22" d="M236 702c93 97 214 146 363 146"/>
+	<path fill="none" stroke="#d8fff8" stroke-opacity="0.2" stroke-width="14" d="M322 770c75 52 160 80 268 88"/>
+
+	<path fill="url(#horn)" d="M238 412c24-96 94-167 191-196 21-6 37 18 24 34-48 60-71 138-61 218 2 15-7 30-22 34-9 3-18 1-26-4-43-26-77-56-106-86z"/>
+	<path fill="url(#horn)" d="M786 412c-29 30-63 60-106 86-8 5-17 7-26 4-15-4-24-19-22-34 10-80-13-158-61-218-13-16 3-40 24-34 97 29 167 100 191 196z"/>
+
+	<circle cx="512" cy="558" r="248" fill="url(#core)"/>
+	<circle cx="512" cy="558" r="232" fill="none" stroke="#8cfce8" stroke-opacity="0.35" stroke-width="8"/>
+
+	<path fill="#f8fffd" d="M364 436h296v92H556v230h-88V528H364z"/>
+	<path fill="#82ffe8" fill-opacity="0.4" d="M512 318c132 0 240 108 240 240 0 39-10 76-27 108 8-22 13-45 13-70 0-116-94-210-210-210-91 0-169 58-197 139 14-117 114-207 234-207z"/>
+</svg>

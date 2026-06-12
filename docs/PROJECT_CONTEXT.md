@@ -61,7 +61,7 @@ Environment variables:
 Service worker file: `public/sw.js`
 
 Current behavior:
-- Versioned cache names (`SW_VERSION = "taurus-v3"`).
+- Versioned cache names (`SW_VERSION = "taurus-v4"`).
 - Pre-caches app shell assets and `offline.html`.
 - Pre-caches the changelog page so it remains available after the first visit.
 - Activates immediately (`skipWaiting` + `clients.claim`).
@@ -70,6 +70,14 @@ Current behavior:
 - `/api/share` and `/og`: network-first dynamic caching.
 - Static assets (style/script/image/font): stale-while-revalidate.
 - Offline fallback now points users back to the planner and changelog when the network is unavailable.
+
+Icon assets and install branding:
+- `public/icon.svg` is now the high-fidelity Taurus master icon artwork.
+- Added purpose-specific icon masters: `public/icon-maskable.svg` and `public/icon-monochrome.svg`.
+- Generated install assets include `icon-192.png`, `icon-512.png`, `icon-1024.png`, `icon-maskable-192.png`, `icon-maskable-512.png`, `icon-monochrome-512.png`, `apple-touch-icon.png`, and `favicon-32.png`.
+- `public/manifest.webmanifest` now declares `any`, `maskable`, and `monochrome` icon purposes for better platform support.
+- `src/app/layout.tsx` now exposes SVG and bitmap icon metadata for browser tabs and install prompts.
+- `public/sw.js` pre-caches the new icon assets to improve first-run install consistency.
 
 Registration UI:
 - `src/components/service-worker-register.tsx`
@@ -93,6 +101,12 @@ This ensures browsers re-check worker updates reliably.
 - Start: `npm run start`
 
 ## Change Log
+### 2026-06-12
+- Replaced Taurus app icon artwork with a new premium icon family for PWA installs.
+- Added dedicated maskable and monochrome icon assets and updated manifest purposes.
+- Updated layout metadata and service worker cache shell to include the new icon files.
+- Touched files: `CHANGELOG.md`, `docs/PROJECT_CONTEXT.md`, `public/icon.svg`, `public/icon-maskable.svg`, `public/icon-monochrome.svg`, `public/icon-192.png`, `public/icon-512.png`, `public/icon-1024.png`, `public/icon-maskable-192.png`, `public/icon-maskable-512.png`, `public/icon-monochrome-512.png`, `public/apple-touch-icon.png`, `public/favicon-32.png`, `public/manifest.webmanifest`, `public/sw.js`, `src/app/layout.tsx`.
+- Impact: stronger Taurus brand recognition and significantly better launcher/install icon rendering across Android and iOS.
 ### 2026-06-12
 - Added the changelog page and linked it from the app surfaces.
 - Added planner and shared-view mode toggles for calendar, list, and summary/text previews.

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Taurus monochrome icon">
+  <rect width="1024" height="1024" fill="#0b2236"/>
+  <path fill="#ffffff" d="M265 417c20-82 80-145 165-170 19-6 34 16 22 30-41 52-61 120-52 188 2 13-6 25-18 29-8 2-15 1-22-3-37-22-67-47-95-74z"/>
+  <path fill="#ffffff" d="M759 417c-28 27-58 52-95 74-7 4-14 5-22 3-12-4-20-16-18-29 9-68-11-136-52-188-12-14 3-36 22-30 85 25 145 88 165 170z"/>
+  <circle cx="512" cy="571" r="237" fill="#ffffff"/>
+  <path fill="#0b2236" d="M372 457h280v90h-98v230h-84V547h-98z"/>
+</svg>

@@ -1,4 +1,4 @@
-const SW_VERSION = "taurus-v3";
+const SW_VERSION = "taurus-v4";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
 const OFFLINE_URL = "/offline.html";
@@ -8,9 +8,17 @@ const APP_SHELL = [
   "/changelog",
   OFFLINE_URL,
   "/manifest.webmanifest",
+  "/icon.svg",
+  "/icon-maskable.svg",
+  "/icon-monochrome.svg",
+  "/icon-1024.png",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
+  "/icon-monochrome-512.png",
   "/apple-touch-icon.png",
+  "/favicon-32.png",
   "/favicon.ico",
 ];
 
