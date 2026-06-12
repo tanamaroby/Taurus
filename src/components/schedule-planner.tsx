@@ -1,10 +1,12 @@
 "use client";
 
-import { addMonths } from "date-fns";
+import { addMonths, format } from "date-fns";
 import {
   CalendarDays,
   Check,
   Clipboard,
+  FileText,
+  List,
   Loader2,
   Moon,
   Plus,
@@ -12,7 +14,8 @@ import {
   Sun,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 
 import {
@@ -33,12 +36,106 @@ const quickLabels = [
   "Family time",
 ];
 
+type PlannerViewMode = "text" | "list" | "calendar";
+
+type StoredPlannerState = {
+  messageTitle: string;
+  label: string;
+  subSections: string[];
+  ranges: BlockedRange[];
+  importText: string;
+  viewMode: PlannerViewMode;
+  isDark: boolean;
+};
+
+const PLANNER_STORAGE_KEY = "taurus-planner-state-v1";
+
+function isPlannerViewMode(value: string): value is PlannerViewMode {
+  return value === "text" || value === "list" || value === "calendar";
+}
+
+function loadPlannerState(): StoredPlannerState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawState = window.localStorage.getItem(PLANNER_STORAGE_KEY);
+  if (!rawState) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawState) as Partial<StoredPlannerState>;
+
+    if (
+      typeof parsed.messageTitle !== "string" ||
+      typeof parsed.label !== "string" ||
+      !Array.isArray(parsed.subSections) ||
+      !Array.isArray(parsed.ranges) ||
+      typeof parsed.importText !== "string" ||
+      typeof parsed.viewMode !== "string" ||
+      typeof parsed.isDark !== "boolean" ||
+      !isPlannerViewMode(parsed.viewMode)
+    ) {
+      return null;
+    }
+
+    const ranges = parsed.ranges
+      .map((range) => {
+        if (
+          !range ||
+          typeof range.id !== "string" ||
+          typeof range.label !== "string" ||
+          !Array.isArray(range.subSections) ||
+          typeof range.from !== "string" ||
+          typeof range.to !== "string"
+        ) {
+          return null;
+        }
+
+        const from = new Date(range.from);
+        const to = new Date(range.to);
+
+        if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+          return null;
+        }
+
+        const normalized = normalizeRange(from, to);
+        return {
+          id: range.id,
+          label: range.label,
+          subSections: range.subSections
+            .map((item) => String(item).trim())
+            .filter(Boolean),
+          from: normalized.from,
+          to: normalized.to,
+        } satisfies BlockedRange;
+      })
+      .filter((range): range is BlockedRange => Boolean(range));
+
+    return {
+      messageTitle: parsed.messageTitle,
+      label: parsed.label,
+      subSections: parsed.subSections
+        .map((item) => String(item).trim())
+        .filter(Boolean),
+      ranges,
+      importText: parsed.importText,
+      viewMode: parsed.viewMode,
+      isDark: parsed.isDark,
+    };
+  } catch {
+    return null;
+  }
+}
+
 type SchedulePlannerProps = {
   initialSchedule?: ImportedSchedule;
 };
 
 export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
   const [isDark, setIsDark] = useState(false);
+  const [viewMode, setViewMode] = useState<PlannerViewMode>("text");
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
   const [messageTitle, setMessageTitle] = useState(
     initialSchedule?.messageTitle ?? "SCHEDULES",
@@ -57,19 +154,78 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const hasHydratedRef = useRef(false);
 
   const output = useMemo(
     () => formatWhatsAppText(ranges, messageTitle),
     [ranges, messageTitle],
   );
+  const sortedRanges = useMemo(
+    () => [...ranges].sort((a, b) => a.from.getTime() - b.from.getTime()),
+    [ranges],
+  );
   const selectedDays = useMemo(
     () =>
-      ranges.reduce(
+      sortedRanges.reduce(
         (total, range) => total + countInclusiveDays(range.from, range.to),
         0,
       ),
-    [ranges],
+    [sortedRanges],
   );
+  const firstRange = sortedRanges[0];
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(window.navigator.onLine);
+    updateOnlineStatus();
+
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+
+    return () => {
+      window.removeEventListener("online", updateOnlineStatus);
+      window.removeEventListener("offline", updateOnlineStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      if (!initialSchedule) {
+        const persisted = loadPlannerState();
+        if (persisted) {
+          setMessageTitle(persisted.messageTitle);
+          setLabel(persisted.label);
+          setSubSections(persisted.subSections);
+          setRanges(persisted.ranges);
+          setImportText(persisted.importText);
+          setViewMode(persisted.viewMode);
+          setIsDark(persisted.isDark);
+        }
+      }
+
+      hasHydratedRef.current = true;
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [initialSchedule]);
+
+  useEffect(() => {
+    if (!hasHydratedRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const nextState: StoredPlannerState = {
+      messageTitle,
+      label,
+      subSections,
+      ranges,
+      importText,
+      viewMode,
+      isDark,
+    };
+
+    window.localStorage.setItem(PLANNER_STORAGE_KEY, JSON.stringify(nextState));
+  }, [importText, isDark, label, messageTitle, ranges, subSections, viewMode]);
 
   function toggleTheme() {
     setIsDark((current) => !current);
@@ -219,15 +375,105 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
     }
   }
 
+  function renderPreview() {
+    if (viewMode === "list") {
+      if (sortedRanges.length === 0) {
+        return (
+          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+            Add a range to see the list preview.
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-3">
+          {sortedRanges.map((range, index) => (
+            <article
+              key={range.id}
+              className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-slate-950"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-slate-950 dark:text-white">
+                    {range.label}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {format(range.from, "EEE, d MMM yyyy")} to{" "}
+                    {format(range.to, "EEE, d MMM yyyy")}
+                  </p>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                  #{index + 1}
+                </span>
+              </div>
+
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {formatCompactRange(range)} ·{" "}
+                {countInclusiveDays(range.from, range.to)}{" "}
+                {countInclusiveDays(range.from, range.to) === 1
+                  ? "day"
+                  : "days"}
+              </p>
+
+              {range.subSections.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {range.subSections.map((item) => (
+                    <span
+                      key={`${range.id}-${item}`}
+                      className="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-800 dark:border-teal-300/20 dark:bg-teal-300/10 dark:text-teal-100"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      );
+    }
+
+    if (viewMode === "calendar") {
+      return sortedRanges.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-6 text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+          Add a range to preview the blocked dates on a calendar.
+        </div>
+      ) : (
+        <div className="planner-calendar rounded-3xl border border-slate-200 bg-linear-to-b from-white to-slate-50 p-2 dark:border-white/10 dark:from-slate-950 dark:to-slate-900 sm:p-4">
+          <DayPicker
+            mode="multiple"
+            defaultMonth={firstRange?.from ?? new Date()}
+            numberOfMonths={1}
+            endMonth={addMonths(new Date(), 18)}
+            modifiers={{
+              blocked: sortedRanges.map((range) => ({
+                from: range.from,
+                to: range.to,
+              })),
+            }}
+            modifiersClassNames={{ blocked: "rdp-blocked" }}
+            className="mx-auto"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <pre className="min-h-80 whitespace-pre-wrap rounded-3xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm leading-6 text-slate-800 shadow-inner shadow-slate-200/70 dark:border-white/10 dark:bg-black/30 dark:text-slate-100 dark:shadow-black/30">
+        {output}
+      </pre>
+    );
+  }
+
   return (
     <main className={isDark ? "dark" : ""}>
       <div className="min-h-screen overflow-hidden bg-slate-50 text-slate-950 transition-colors duration-300 dark:bg-slate-950 dark:text-white">
-        <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.20),transparent_32%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.88))] dark:bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(15,23,42,0.96))]" />
+        <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.20),transparent_32%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.9),rgba(248,250,252,0.88))] dark:bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.16),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(15,23,42,0.96))]" />
 
         <section className="relative mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
-          <header className="flex flex-col gap-5 rounded-[2rem] border border-white/70 bg-white/80 p-5 shadow-2xl shadow-slate-200/70 backdrop-blur dark:border-white/10 dark:bg-white/7 dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between">
+          <header className="flex flex-col gap-5 rounded-4xl border border-white/70 bg-white/80 p-5 shadow-2xl shadow-slate-200/70 backdrop-blur dark:border-white/10 dark:bg-white/7 dark:shadow-black/30 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
-              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-teal-500 to-blue-600 text-white shadow-lg shadow-teal-500/25">
+              <div className="grid h-14 w-14 place-items-center rounded-2xl bg-linear-to-br from-teal-500 to-blue-600 text-white shadow-lg shadow-teal-500/25">
                 <CalendarDays aria-hidden="true" />
               </div>
               <div>
@@ -237,6 +483,9 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
                   WhatsApp schedule blocker
                 </h1>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  Drafts save locally on this device, even when you are offline.
+                </p>
               </div>
             </div>
 
@@ -257,7 +506,7 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
 
           <section className="grid gap-6 lg:grid-cols-[1.04fr_0.96fr]">
             <div className="space-y-6">
-              <div className="rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-xl shadow-slate-200/70 backdrop-blur dark:border-white/10 dark:bg-slate-900/88 dark:shadow-black/30 sm:p-6">
+              <div className="rounded-4xl border border-white/70 bg-white/90 p-5 shadow-xl shadow-slate-200/70 backdrop-blur dark:border-white/10 dark:bg-slate-900/88 dark:shadow-black/30 sm:p-6">
                 <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-teal-700 dark:bg-teal-400/10 dark:text-teal-200">
@@ -297,7 +546,7 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
                   </span>
                 </label>
 
-                <div className="planner-calendar rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-2 dark:border-white/10 dark:from-slate-950 dark:to-slate-900 sm:p-4">
+                <div className="planner-calendar rounded-3xl border border-slate-200 bg-linear-to-b from-white to-slate-50 p-2 dark:border-white/10 dark:from-slate-950 dark:to-slate-900 sm:p-4">
                   <DayPicker
                     mode="range"
                     selected={draftRange}
@@ -404,7 +653,7 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
                 </div>
               </div>
 
-              <div className="rounded-[2rem] border border-white/70 bg-white/85 p-5 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/30 sm:p-6">
+              <div className="rounded-4xl border border-white/70 bg-white/85 p-5 shadow-xl shadow-slate-200/60 backdrop-blur dark:border-white/10 dark:bg-slate-900/80 dark:shadow-black/30 sm:p-6">
                 <div className="mb-4 flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-semibold">
@@ -474,7 +723,7 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
               </div>
             </div>
 
-            <aside className="rounded-[2rem] border border-slate-200 bg-white/90 p-5 text-slate-950 shadow-2xl shadow-slate-200/80 backdrop-blur dark:border-white/10 dark:bg-white/8 dark:text-white dark:shadow-black/30 sm:p-6 lg:sticky lg:top-8 lg:self-start">
+            <aside className="rounded-4xl border border-slate-200 bg-white/90 p-5 text-slate-950 shadow-2xl shadow-slate-200/80 backdrop-blur dark:border-white/10 dark:bg-white/8 dark:text-white dark:shadow-black/30 sm:p-6 lg:sticky lg:top-8 lg:self-start">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.22em] text-teal-700 dark:text-teal-300">
@@ -484,15 +733,40 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
                     Ready for WhatsApp
                   </h2>
                   <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    Uses simple separators and labels instead of Markdown so it
-                    stays readable in chat.
+                    Switch between text, list, and calendar previews before you
+                    copy or share the schedule.
                   </p>
                 </div>
               </div>
 
-              <pre className="min-h-80 whitespace-pre-wrap rounded-3xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm leading-6 text-slate-800 shadow-inner shadow-slate-200/70 dark:border-white/10 dark:bg-black/30 dark:text-slate-100 dark:shadow-black/30">
-                {output}
-              </pre>
+              <div className="inline-flex flex-wrap rounded-full border border-slate-200 bg-white p-1 text-sm font-semibold text-slate-600 dark:border-white/10 dark:bg-slate-950 dark:text-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("text")}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition ${viewMode === "text" ? "bg-slate-950 text-white shadow-sm dark:bg-teal-400 dark:text-slate-950" : "hover:text-slate-950 dark:hover:text-white"}`}
+                  aria-pressed={viewMode === "text"}
+                >
+                  <FileText size={16} aria-hidden="true" /> Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition ${viewMode === "list" ? "bg-slate-950 text-white shadow-sm dark:bg-teal-400 dark:text-slate-950" : "hover:text-slate-950 dark:hover:text-white"}`}
+                  aria-pressed={viewMode === "list"}
+                >
+                  <List size={16} aria-hidden="true" /> List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("calendar")}
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 transition ${viewMode === "calendar" ? "bg-slate-950 text-white shadow-sm dark:bg-teal-400 dark:text-slate-950" : "hover:text-slate-950 dark:hover:text-white"}`}
+                  aria-pressed={viewMode === "calendar"}
+                >
+                  <CalendarDays size={16} aria-hidden="true" /> Calendar
+                </button>
+              </div>
+
+              <div className="mt-4">{renderPreview()}</div>
 
               <button
                 type="button"
@@ -612,11 +886,32 @@ export function SchedulePlanner({ initialSchedule }: SchedulePlannerProps) {
                   blocked days
                 </div>
               </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                <span>
+                  {isOnline ? "Online" : "Offline"} · drafts save locally
+                </span>
+                <Link
+                  href="/changelog"
+                  className="font-semibold text-teal-700 transition hover:text-teal-500 dark:text-teal-200 dark:hover:text-teal-100"
+                >
+                  Changelog
+                </Link>
+              </div>
             </aside>
           </section>
 
-          <footer className="pb-4 text-center text-sm text-slate-500 dark:text-slate-400">
-            Built for temporary planning: no account, with short-link sharing.
+          <footer className="flex flex-col items-center justify-between gap-3 pb-4 text-center text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:text-left">
+            <span>
+              Built for temporary planning: no account, short-link sharing, and
+              local offline drafts.
+            </span>
+            <Link
+              href="/changelog"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-teal-300 hover:text-teal-700 dark:border-white/10 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-teal-400 dark:hover:text-teal-200"
+            >
+              <FileText size={16} aria-hidden="true" /> Read changelog
+            </Link>
           </footer>
         </section>
       </div>

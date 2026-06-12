@@ -1,10 +1,11 @@
-const SW_VERSION = "taurus-v2";
+const SW_VERSION = "taurus-v3";
 const STATIC_CACHE = `${SW_VERSION}-static`;
 const DYNAMIC_CACHE = `${SW_VERSION}-dynamic`;
 const OFFLINE_URL = "/offline.html";
 
 const APP_SHELL = [
   "/",
+  "/changelog",
   OFFLINE_URL,
   "/manifest.webmanifest",
   "/icon-192.png",

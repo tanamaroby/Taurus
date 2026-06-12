@@ -15,13 +15,20 @@ Taurus is a mobile-first Next.js application for creating and sharing WhatsApp-f
 ## Mandatory Rule: Keep Project Context Documentation Current
 
 `docs/PROJECT_CONTEXT.md` is the source of truth for current project context.
+`CHANGELOG.md` is the user-facing release history and must stay aligned with the project context.
 
 This is a hard requirement:
 
-- After every code or config change, update `docs/PROJECT_CONTEXT.md` in the same task.
+- After every code or config change, update `docs/PROJECT_CONTEXT.md` and `CHANGELOG.md` in the same task.
 - Do not finish a task without updating that file when behavior, architecture, routes, API shape, caching, environment requirements, or UX changed.
 - Keep updates concise but complete.
 - Append an entry to the Change Log section with date, changed files, and a short impact summary.
+- Treat all in-flight changes as WIP in the changelog and on the changelog page until the version bump is finalized.
+
+## Version Bumps
+
+- When asked to bump the version, ask whether the user wants a patch, minor, or major bump before changing version numbers.
+- Keep version bumps and changelog updates together so release notes and package metadata never drift.
 
 If there was no behavioral or architecture change, add a brief note in the Change Log stating that only internal refactors occurred.
 

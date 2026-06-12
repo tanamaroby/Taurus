@@ -8,7 +8,7 @@
       :root {
         color-scheme: light;
         --bg-top: #ecfeff;
-        --bg-bottom: #f0fdfa;
+        --bg-bottom: #f8fafc;
         --text: #0f172a;
         --muted: #334155;
         --accent: #0f766e;
@@ -24,23 +24,28 @@
         display: grid;
         place-items: center;
         font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+        background:
+          radial-gradient(circle at top left, rgba(45, 212, 191, 0.18), transparent 32%),
+          radial-gradient(circle at top right, rgba(96, 165, 250, 0.16), transparent 30%),
+          linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
         color: var(--text);
         padding: 24px;
       }
 
       main {
-        width: min(560px, 100%);
-        background: rgba(255, 255, 255, 0.8);
-        border: 1px solid rgba(15, 118, 110, 0.25);
-        border-radius: 16px;
+        width: min(620px, 100%);
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(15, 118, 110, 0.18);
+        border-radius: 24px;
         padding: 28px;
-        backdrop-filter: blur(6px);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
       }
 
       h1 {
         margin: 0;
-        font-size: 1.5rem;
+        font-size: 1.7rem;
+        letter-spacing: -0.03em;
       }
 
       p {
@@ -50,18 +55,37 @@
         line-height: 1.55;
       }
 
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
       a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 999px;
+        text-decoration: none;
         color: var(--accent);
         font-weight: 600;
+        border: 1px solid rgba(15, 118, 110, 0.18);
+        background: rgba(255, 255, 255, 0.9);
       }
     </style>
   </head>
   <body>
     <main>
       <h1>You are offline</h1>
-      <p>Taurus could not reach the network. Previously visited screens are still available while your connection is down.</p>
+      <p>Taurus could not reach the network. Previously visited screens may still open from cache, and planner drafts are saved locally on this device.</p>
       <p>Reconnect and refresh this page to sync the latest data.</p>
-      <p><a href="/">Back to Taurus</a></p>
+      <div class="actions">
+        <a href="/">Back to Taurus</a>
+        <a href="/changelog">Open changelog</a>
+      </div>
     </main>
   </body>
 </html>
