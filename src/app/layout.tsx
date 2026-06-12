@@ -1,9 +1,11 @@
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Taurus — WhatsApp Schedule Blocker",
-  description: "Create clear plain-text blocked date summaries to copy into WhatsApp.",
+  description:
+    "Create clear plain-text blocked date summaries to copy into WhatsApp.",
   applicationName: "Taurus",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -12,7 +14,9 @@ export const metadata: Metadata = {
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -30,7 +34,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
